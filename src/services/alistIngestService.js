@@ -80,6 +80,23 @@ function parseMarkdownContent(raw) {
   };
 }
 
+function looksLikeHtmlDescription(text) {
+  if (!text || typeof text !== 'string') {
+    return false;
+  }
+
+  return /<\/?[a-z][\s\S]*>/iu.test(text);
+}
+
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function isImageFile(filename) {
   if (!filename) {
     return false;
@@ -489,13 +506,18 @@ class AlistIngestService {
           coverImageUrl = randomTask?.file_url || null;
 
           if (!isVideoResource) {
-            const imageMarkdown = imageTasks
-              .map(({ file_name, file_url }) => `![${file_name}](${file_url})`)
-              .join('\n');
+            const appendHtml = looksLikeHtmlDescription(baseDescription);
+            const imageContent = appendHtml
+              ? imageTasks
+                .map(({ file_name, file_url }) => `<p><img src="${escapeHtml(file_url)}" alt="${escapeHtml(file_name)}" /></p>`)
+                .join('\n')
+              : imageTasks
+                .map(({ file_name, file_url }) => `![${file_name}](${file_url})`)
+                .join('\n');
 
             finalDescription = baseDescription
-              ? `${baseDescription.replace(/\s+$/u, '')}\n\n${imageMarkdown}`
-              : imageMarkdown;
+              ? `${baseDescription.replace(/\s+$/u, '')}\n\n${imageContent}`
+              : imageContent;
           } else {
             finalDescription = baseDescription || DEFAULT_DESCRIPTION;
           }
